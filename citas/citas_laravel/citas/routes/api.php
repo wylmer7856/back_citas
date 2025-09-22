@@ -23,13 +23,13 @@ Route::middleware(['auth:sanctum'])->group(function () {
     // ----------------------------
     // ADMIN
     // ----------------------------
-    Route::middleware('role:admin')->group(function () {
+    Route::middleware('role:ADMIN')->group(function () {
         // Gestión de usuarios
-        Route::get('/usuarios', [UsuariosController::class, 'index']); 
-        Route::post('/usuarios', [UsuariosController::class, 'store']);
-        Route::get('/usuarios/{id}', [UsuariosController::class, 'show']);
-        Route::put('/usuarios/{id}', [UsuariosController::class, 'update']);
-        Route::delete('/usuarios/{id}', [UsuariosController::class, 'destroy']);
+        Route::get('/listarusuarios', [UsuariosController::class, 'index']); 
+        Route::post('/Crearusuarios', [UsuariosController::class, 'store']);
+        Route::get('/buscrausuarios/{id}', [UsuariosController::class, 'show']);
+        Route::put('/editarusuarios/{id}', [UsuariosController::class, 'update']);
+        Route::delete('/eliminarusuarios/{id}', [UsuariosController::class, 'destroy']);
 
         // Gestión de especialidades
         Route::post('/especialidades', [EspecialidadesController::class, 'store']);    
@@ -47,7 +47,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     // ----------------------------
     // ADMIN + MEDICO
     // ----------------------------
-    Route::middleware('role:admin,medico')->group(function () {
+    Route::middleware('role:ADMIN,MEDICO')->group(function () {
         // Ver especialidades
         Route::get('/especialidades', [EspecialidadesController::class, 'index']);
         Route::get('/especialidades/{id}', [EspecialidadesController::class, 'show']);
@@ -65,7 +65,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     // ----------------------------
     // MEDICO + PACIENTE
     // ----------------------------
-    Route::middleware('role:medico,paciente')->group(function () {
+    Route::middleware('role:MEDICO,PACIENTE')->group(function () {
         // Manejo de citas
         Route::get('/citas', [CitasController::class, 'index']);
         Route::post('/citas', [CitasController::class, 'store']);

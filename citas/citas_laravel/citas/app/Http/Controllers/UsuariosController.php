@@ -26,7 +26,7 @@ class UsuariosController extends Controller
             'apellido' => 'required|string',
             'email'    => 'required|email|unique:usuarios',
             'telefono' => 'nullable|string',
-            'rol'      => 'required|in:admin,medico,paciente',
+            'rol'      => 'required|in:ADMIN,MEDICO,PACIENTE',
             'password' => 'required|string|min:6'
         ]);
 
@@ -69,7 +69,7 @@ class UsuariosController extends Controller
 
         $request->validate([
             'email' => 'nullable|email|unique:usuarios,email,' . $usuario->id,
-            'rol'   => 'nullable|in:admin,medico,paciente'
+            'rol'   => 'nullable|in:ADMIN,MEDICO,PACIENTE'
         ]);
 
         $usuario->update($request->only(['nombre', 'apellido', 'email', 'telefono', 'rol']));
@@ -102,29 +102,30 @@ class UsuariosController extends Controller
      * Registro de paciente (registro público)
      */
     public function register(Request $request)
-    {
-        $request->validate([
-            'nombre'   => 'required|string',
-            'apellido' => 'required|string',
-            'email'    => 'required|email|unique:usuarios',
-            'telefono' => 'nullable|string',
-            'password' => 'required|string|min:6',
-        ]);
+{
+    $request->validate([
+        'nombre'   => 'required|string',
+        'apellido' => 'required|string',
+        'email'    => 'required|email|unique:usuarios',
+        'telefono' => 'nullable|string',
+        'password' => 'required|string|min:6',
+        'rol'      => 'required|in:ADMIN,PACIENTE', // solo se aceptan ADMIN o PACIENTE
+    ]);
 
-        $usuario = Usuarios::create([
-            'nombre'   => $request->nombre,
-            'apellido' => $request->apellido,
-            'email'    => $request->email,
-            'telefono' => $request->telefono,
-            'rol'      => 'paciente', // 👈 el rol de los registros públicos siempre será paciente
-            'password' => Hash::make($request->password),
-        ]);
+    $usuario = Usuarios::create([
+        'nombre'   => $request->nombre,
+        'apellido' => $request->apellido,
+        'email'    => $request->email,
+        'telefono' => $request->telefono,
+        'rol'      => $request->rol,  // el rol lo define el request
+        'password' => Hash::make($request->password),
+    ]);
 
-        return response()->json([
-            'message' => 'Paciente registrado exitosamente',
-            'usuario' => $usuario
-        ], 201);
-    }
+    return response()->json([
+        'message' => 'Usuario registrado exitosamente',
+        'usuario' => $usuario
+    ], 201);
+}
 
     /**
      * Login con Sanctum
