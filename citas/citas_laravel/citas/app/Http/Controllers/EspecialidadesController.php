@@ -7,18 +7,43 @@ use Illuminate\Http\Request;
 
 class EspecialidadesController extends Controller
 {
+    /**
+     * Listar todas las especialidades (acceso libre)
+     */
     public function index()
     {
-        return response()->json(Especialidades::all(), 200);
+        $especialidades = Especialidades::orderBy('nombre')->get();
+        return response()->json($especialidades);
     }
 
-    public function store(Request $request)
+    /**
+     * Buscar especialidad por nombre (acceso libre)
+     */
+    public function buscarPorNombre(Request $request)
     {
         $request->validate([
-            'nombre' => 'required|string|unique:especialidades'
+            'nombre' => 'required|string'
         ]);
 
-        $especialidad = Especialidades::create($request->all());
+        $especialidad = Especialidades::where('nombre', 'like', '%' . $request->nombre . '%')->get();
+
+        return response()->json($especialidad);
+    }
+
+    /**
+     * Crear especialidad (solo Admin)
+     */
+    public function store(Request $request)
+    {
+        abort_unless($request->user()->rol === 'ADMIN', 403, 'Solo el administrador puede crear especialidades');
+
+        $request->validate([
+            'nombre' => 'required|string|unique:especialidades,nombre'
+        ]);
+
+        $especialidad = Especialidades::create([
+            'nombre' => ucfirst(strtolower($request->nombre))
+        ]);
 
         return response()->json([
             'message' => 'Especialidad creada correctamente',
@@ -26,33 +51,53 @@ class EspecialidadesController extends Controller
         ], 201);
     }
 
+    /**
+     * Mostrar una especialidad por ID
+     */
     public function show($id)
     {
-        $especialidad = Especialidades::findOrFail($id);
-        return response()->json($especialidad, 200);
+        $especialidad = Especialidades::find($id);
+        abort_if(!$especialidad, 404, 'Especialidad no encontrada');
+
+        return response()->json($especialidad);
     }
 
+    /**
+     * Actualizar especialidad (solo Admin)
+     */
     public function update(Request $request, $id)
     {
-        $especialidad = Especialidades::findOrFail($id);
+        abort_unless($request->user()->rol === 'ADMIN', 403, 'Solo el administrador puede actualizar especialidades');
+
+        $especialidad = Especialidades::find($id);
+        abort_if(!$especialidad, 404, 'Especialidad no encontrada');
 
         $request->validate([
             'nombre' => 'required|string|unique:especialidades,nombre,' . $id
         ]);
 
-        $especialidad->update($request->only(['nombre']));
+        $especialidad->update([
+            'nombre' => ucfirst(strtolower($request->nombre))
+        ]);
 
         return response()->json([
             'message' => 'Especialidad actualizada correctamente',
             'data' => $especialidad
-        ], 200);
+        ]);
     }
 
-    public function destroy($id)
+    /**
+     * Eliminar especialidad (solo Admin)
+     */
+    public function destroy($id, Request $request)
     {
-        $especialidad = Especialidades::findOrFail($id);
+        abort_unless($request->user()->rol === 'ADMIN', 403, 'Solo el administrador puede eliminar especialidades');
+
+        $especialidad = Especialidades::find($id);
+        abort_if(!$especialidad, 404, 'Especialidad no encontrada');
+
         $especialidad->delete();
 
-        return response()->json(['message' => 'Especialidad eliminada'], 200);
+        return response()->json(['message' => 'Especialidad eliminada']);
     }
 }

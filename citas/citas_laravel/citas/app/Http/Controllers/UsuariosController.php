@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Usuarios;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Auth;
 
 class UsuariosController extends Controller
 {
@@ -13,6 +14,8 @@ class UsuariosController extends Controller
      */
     public function index()
     {
+        $this->authorizeAdmin();
+
         return response()->json(Usuarios::all(), 200);
     }
 
@@ -21,6 +24,8 @@ class UsuariosController extends Controller
      */
     public function store(Request $request)
     {
+        $this->authorizeAdmin();
+
         $request->validate([
             'nombre'   => 'required|string',
             'apellido' => 'required|string',
@@ -43,7 +48,7 @@ class UsuariosController extends Controller
     }
 
     /**
-     * Mostrar un usuario
+     * Mostrar un usuario (Admin o el mismo usuario)
      */
     public function show($id)
     {
@@ -53,11 +58,15 @@ class UsuariosController extends Controller
             return response()->json(['message' => 'Usuario no encontrado'], 404);
         }
 
+        if (!$this->isAdminOrSelf($usuario)) {
+            return response()->json(['message' => 'No autorizado'], 403);
+        }
+
         return response()->json($usuario, 200);
     }
 
     /**
-     * Actualizar usuario
+     * Actualizar usuario (Admin o el mismo usuario)
      */
     public function update(Request $request, $id)
     {
@@ -65,6 +74,10 @@ class UsuariosController extends Controller
 
         if (!$usuario) {
             return response()->json(['message' => 'Usuario no encontrado'], 404);
+        }
+
+        if (!$this->isAdminOrSelf($usuario)) {
+            return response()->json(['message' => 'No autorizado'], 403);
         }
 
         $request->validate([
@@ -83,10 +96,12 @@ class UsuariosController extends Controller
     }
 
     /**
-     * Eliminar usuario
+     * Eliminar usuario (solo Admin)
      */
     public function destroy($id)
     {
+        $this->authorizeAdmin();
+
         $usuario = Usuarios::find($id);
 
         if (!$usuario) {
@@ -99,33 +114,33 @@ class UsuariosController extends Controller
     }
 
     /**
-     * Registro de paciente (registro público)
+     * Registro público (solo PACIENTE)
      */
     public function register(Request $request)
-{
-    $request->validate([
-        'nombre'   => 'required|string',
-        'apellido' => 'required|string',
-        'email'    => 'required|email|unique:usuarios',
-        'telefono' => 'nullable|string',
-        'password' => 'required|string|min:6',
-        'rol'      => 'required|in:ADMIN,PACIENTE', // solo se aceptan ADMIN o PACIENTE
-    ]);
+    {
+        $request->validate([
+            'nombre'   => 'required|string',
+            'apellido' => 'required|string',
+            'email'    => 'required|email|unique:usuarios',
+            'telefono' => 'nullable|string',
+            'password' => 'required|string|min:6',
+            'rol'      => 'required|in:PACIENTE',
+        ]);
 
-    $usuario = Usuarios::create([
-        'nombre'   => $request->nombre,
-        'apellido' => $request->apellido,
-        'email'    => $request->email,
-        'telefono' => $request->telefono,
-        'rol'      => $request->rol,  // el rol lo define el request
-        'password' => Hash::make($request->password),
-    ]);
+        $usuario = Usuarios::create([
+            'nombre'   => $request->nombre,
+            'apellido' => $request->apellido,
+            'email'    => $request->email,
+            'telefono' => $request->telefono,
+            'rol'      => $request->rol,
+            'password' => Hash::make($request->password),
+        ]);
 
-    return response()->json([
-        'message' => 'Usuario registrado exitosamente',
-        'usuario' => $usuario
-    ], 201);
-}
+        return response()->json([
+            'message' => 'Paciente registrado exitosamente',
+            'usuario' => $usuario
+        ], 201);
+    }
 
     /**
      * Login con Sanctum
@@ -160,5 +175,26 @@ class UsuariosController extends Controller
         $request->user()->tokens()->delete();
 
         return response()->json(['message' => 'Sesión cerrada correctamente']);
+    }
+
+    /**
+     * Ver perfil propio
+     */
+    public function perfil()
+    {
+        return response()->json(Auth::user());
+    }
+
+    // 🔒 Métodos internos para validación de rol
+    private function authorizeAdmin()
+    {
+        if (Auth::user()->rol !== 'ADMIN') {
+            abort(403, 'Acceso restringido a administradores');
+        }
+    }
+
+    private function isAdminOrSelf($usuario)
+    {
+        return Auth::user()->rol === 'ADMIN' || Auth::id() === $usuario->id;
     }
 }

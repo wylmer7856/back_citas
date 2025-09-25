@@ -8,74 +8,105 @@ use App\Http\Controllers\CitasController;
 use App\Http\Controllers\HistorialController;
 
 // ----------------------------
-// RUTAS PÚBLICAS (Auth)
+// RUTAS PÚBLICAS
 // ----------------------------
 Route::post('/register', [UsuariosController::class, 'register']);
 Route::post('/login', [UsuariosController::class, 'login']);
 
 // ----------------------------
-// RUTAS PROTEGIDAS (Auth Sanctum)
+// RUTAS PROTEGIDAS
 // ----------------------------
 Route::middleware(['auth:sanctum'])->group(function () {
 
     Route::post('/logout', [UsuariosController::class, 'logout']);
+    Route::get('/perfil', [UsuariosController::class, 'perfil']);
 
     // ----------------------------
     // ADMIN
     // ----------------------------
     Route::middleware('role:ADMIN')->group(function () {
-        // Gestión de usuarios
-        Route::get('/listarusuarios', [UsuariosController::class, 'index']);
-        Route::post('/Crearusuarios', [UsuariosController::class, 'store']);
-        Route::get('/buscrausuarios/{id}', [UsuariosController::class, 'show']);
-        Route::put('/editarusuarios/{id}', [UsuariosController::class, 'update']);
-        Route::delete('/eliminarusuarios/{id}', [UsuariosController::class, 'destroy']);
+        // Usuarios
+        Route::get('/usuarios', [UsuariosController::class, 'index']);
+        Route::post('/usuarios', [UsuariosController::class, 'store']);
+        Route::get('/usuarios/{id}', [UsuariosController::class, 'show']);
+        Route::put('/usuarios/{id}', [UsuariosController::class, 'update']);
+        Route::delete('/usuarios/{id}', [UsuariosController::class, 'destroy']);
 
-        // Gestión de especialidades
+        // Especialidades
+        Route::get('/especialidades', [EspecialidadesController::class, 'index']);
+        Route::get('/especialidades/{id}', [EspecialidadesController::class, 'show']);
+        Route::post('/especialidades', [EspecialidadesController::class, 'store']);
+        Route::put('/especialidades/{id}', [EspecialidadesController::class, 'update']);
+        Route::delete('/especialidades/{id}', [EspecialidadesController::class, 'destroy']);
+        Route::get('/especialidades/buscar', [EspecialidadesController::class, 'buscarPorNombre']);
 
-        Route::get('/listarespecialidades', [EspecialidadesController::class, 'index']);
-        Route::post('/crearespecialidades', [EspecialidadesController::class, 'store']);
-        Route::put('/editarespecialidades/{id}', [EspecialidadesController::class, 'update']);
-        Route::delete('/eliminarespecialidades/{id}', [EspecialidadesController::class, 'destroy']);
+        // Médico - Especialidad
+        Route::get('/medico-especialidad', [MedicoEspecialidadController::class, 'index']);
+        Route::get('/medico-especialidad/medico/{id}', [MedicoEspecialidadController::class, 'porMedico']);
+        Route::post('/medico-especialidad', [MedicoEspecialidadController::class, 'store']);
+        Route::post('/medico-especialidad/multiples', [MedicoEspecialidadController::class, 'asignarMultiples']);
+        Route::delete('/medico-especialidad/{id}', [MedicoEspecialidadController::class, 'destroy']);
 
-        // Asignar especialidades a médicos
-        Route::get('/listarmedico-especialidad', [MedicoEspecialidadController::class, 'index']);
-        Route::post('/crearmedico-especialidad', [MedicoEspecialidadController::class, 'store']);
-        Route::delete('/eliminarmedico-especialidad/{id}', [MedicoEspecialidadController::class, 'destroy']);
+        // Historiales
+        Route::get('/historiales', [HistorialController::class, 'index']);
+        Route::get('/historiales/{id}', [HistorialController::class, 'show']);
+        Route::get('/historiales/cita/{id_cita}', [HistorialController::class, 'porCita']);
+        Route::delete('/historiales/{id}', [HistorialController::class, 'destroy']);
 
-        // Eliminar historiales
-        Route::get('/listarhistorial', [HistorialController::class, 'index']);
-        Route::delete('/historial/{id}', [HistorialController::class, 'destroy']);
+        // Citas
+        Route::get('/citas', [CitasController::class, 'index']);
+        Route::get('/citas/{id}', [CitasController::class, 'show']);
+        Route::put('/citas/{id}', [CitasController::class, 'update']);
+        Route::delete('/citas/{id}', [CitasController::class, 'destroy']);
     });
 
     // ----------------------------
-    // ADMIN + MEDICO
+    // MEDICO
     // ----------------------------
-    Route::middleware('role:ADMIN,MEDICO')->group(function () {
-        // Ver especialidades
-        Route::get('/listarespecialidades', [EspecialidadesController::class, 'index']);
-        Route::get('/buscareespecialidades/{id}', [EspecialidadesController::class, 'show']);
+    Route::middleware('role:MEDICO')->group(function () {
+        // Especialidades
+        Route::get('/especialidades', [EspecialidadesController::class, 'index']);
+        Route::get('/especialidades/{id}', [EspecialidadesController::class, 'show']);
+        Route::get('/especialidades/buscar', [EspecialidadesController::class, 'buscarPorNombre']);
 
-        // Ver relaciones médico-especialidad
-        Route::get('/listarmedico-especialidad', [MedicoEspecialidadController::class, 'index']);
+        // Médico - Especialidad
+        Route::get('/medico-especialidad', [MedicoEspecialidadController::class, 'index']);
+        Route::get('/medico-especialidad/medico/{id}', [MedicoEspecialidadController::class, 'porMedico']);
 
-        // Manejo de historiales médicos
-        Route::get('/listarhistorial', [HistorialController::class, 'index']);
-        Route::get('/buscarhistorial/{id}', [HistorialController::class, 'show']);
-        Route::post('/crearhistorial', [HistorialController::class, 'store']);
-        Route::put('/eliminarhistorial/{id}', [HistorialController::class, 'update']);
+        // Historiales
+        Route::get('/historiales', [HistorialController::class, 'index']);
+        Route::get('/historiales/{id}', [HistorialController::class, 'show']);
+        Route::get('/historiales/cita/{id_cita}', [HistorialController::class, 'porCita']);
+        Route::post('/historiales', [HistorialController::class, 'store']);
+        Route::put('/historiales/{id}', [HistorialController::class, 'update']);
+
+        // Citas
+        Route::get('/citas', [CitasController::class, 'index']);
+        Route::get('/citas/{id}', [CitasController::class, 'show']);
+        Route::get('/citas/miscitas', [CitasController::class, 'misCitas']);
     });
 
     // ----------------------------
-    // MEDICO + PACIENTE
+    // PACIENTE
     // ----------------------------
-    Route::middleware('role:MEDICO,PACIENTE')->group(function () {
-        // Manejo de citas
-        Route::get('/listarcitas', [CitasController::class, 'index']);
-        Route::post('/crearcitas', [CitasController::class, 'store']);
-        Route::get('/buscarcitas/{id}', [CitasController::class, 'show']);
-        Route::put('/editarcitas/{id}', [CitasController::class, 'update']);
-        Route::delete('/eliminarcitas/{id}', [CitasController::class, 'destroy']);
-    });
+    Route::middleware('role:PACIENTE')->group(function () {
+        // Especialidades
+        Route::get('/especialidades', [EspecialidadesController::class, 'index']);
+        Route::get('/especialidades/{id}', [EspecialidadesController::class, 'show']);
+        Route::get('/especialidades/buscar', [EspecialidadesController::class, 'buscarPorNombre']);
 
+        // Historiales
+        Route::get('/historiales', [HistorialController::class, 'index']);
+        Route::get('/historiales/{id}', [HistorialController::class, 'show']);
+        Route::get('/historiales/cita/{id_cita}', [HistorialController::class, 'porCita']);
+
+        // Citas
+        Route::get('/citas', [CitasController::class, 'index']);
+        Route::get('/citas/{id}', [CitasController::class, 'show']);
+        Route::get('/citas/miscitas', [CitasController::class, 'misCitas']);
+        Route::post('/citas', [CitasController::class, 'store']);
+        Route::put('/citas/{id}', [CitasController::class, 'update']);
+        Route::delete('/citas/{id}', [CitasController::class, 'destroy']);
+    });
+    
 });

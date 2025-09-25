@@ -2,52 +2,52 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Citas;
 use App\Models\Historial;
+use App\Models\Cita;
 use Illuminate\Http\Request;
 
 class HistorialController extends Controller
 {
     /**
-     * Listar historiales
-     * - Admin ve todos
-     * - Médico ve los historiales de sus citas
-     * - Paciente ve sus propios historiales
+     * Listar historiales según rol
      */
     public function index(Request $request)
     {
         $usuario = $request->user();
 
-        if ($usuario->rol === 'admin') {
+        if ($usuario->rol === 'ADMIN') {
             $historiales = Historial::with('cita.medico', 'cita.paciente')->get();
-        } elseif ($usuario->rol === 'medico') {
-            $historiales = Historial::whereHas('cita', function ($q) use ($usuario) {
-                $q->where('id_medico', $usuario->id);
-            })->with('cita.paciente')->get();
-        } else { // paciente
-            $historiales = Historial::whereHas('cita', function ($q) use ($usuario) {
-                $q->where('id_paciente', $usuario->id);
-            })->with('cita.medico')->get();
+        } elseif ($usuario->rol === 'MEDICO') {
+            $historiales = Historial::whereHas('cita', fn($q) => $q->where('id_medico', $usuario->id))
+                ->with('cita.paciente')->get();
+        } elseif ($usuario->rol === 'PACIENTE') {
+            $historiales = Historial::whereHas('cita', fn($q) => $q->where('id_paciente', $usuario->id))
+                ->with('cita.medico')->get();
+        } else {
+            abort(403, 'Rol no autorizado');
         }
 
-        return response()->json($historiales, 200);
+        return response()->json($historiales);
     }
 
     /**
-     * Crear historial (solo médico)
+     * Crear historial (solo médico dueño de la cita)
      */
     public function store(Request $request)
     {
         $usuario = $request->user();
-        if ($usuario->rol !== 'medico') {
-            return response()->json(['message' => 'No tienes permisos para crear historiales'], 403);
-        }
+        abort_unless($usuario->rol === 'MEDICO', 403, 'Solo los médicos pueden crear historiales');
 
         $request->validate([
-            'id_cita'      => 'required|exists:citas,id',
-            'diagnostico'  => 'nullable|string',
-            'receta'       => 'nullable|string',
-            'observaciones'=> 'nullable|string'
+            'id_cita'       => 'required|exists:citas,id',
+            'diagnostico'   => 'nullable|string',
+            'receta'        => 'nullable|string',
+            'observaciones' => 'nullable|string'
         ]);
+
+        $cita = Citas::find($request->id_cita);
+        abort_unless($cita && $cita->id_medico === $usuario->id, 403, 'No puedes crear historial para esta cita');
 
         $historial = Historial::create($request->only(['id_cita', 'diagnostico', 'receta', 'observaciones']));
 
@@ -56,33 +56,24 @@ class HistorialController extends Controller
 
     /**
      * Ver historial
-     * - Admin puede ver todos
-     * - Médico solo los suyos
-     * - Paciente solo los suyos
      */
     public function show($id, Request $request)
     {
         $usuario = $request->user();
-
         $historial = Historial::with('cita.medico', 'cita.paciente')->find($id);
+        abort_if(!$historial, 404, 'Historial no encontrado');
 
-        if (!$historial) {
-            return response()->json(['message' => 'Historial no encontrado'], 404);
+        $cita = $historial->cita;
+
+        if (
+            $usuario->rol === 'ADMIN' ||
+            ($usuario->rol === 'MEDICO' && $cita->id_medico === $usuario->id) ||
+            ($usuario->rol === 'PACIENTE' && $cita->id_paciente === $usuario->id)
+        ) {
+            return response()->json($historial);
         }
 
-        if ($usuario->rol === 'admin') {
-            return response()->json($historial, 200);
-        }
-
-        if ($usuario->rol === 'medico' && $historial->cita->id_medico === $usuario->id) {
-            return response()->json($historial, 200);
-        }
-
-        if ($usuario->rol === 'paciente' && $historial->cita->id_paciente === $usuario->id) {
-            return response()->json($historial, 200);
-        }
-
-        return response()->json(['message' => 'No tienes permisos para ver este historial'], 403);
+        abort(403, 'No tienes permisos para ver este historial');
     }
 
     /**
@@ -92,18 +83,14 @@ class HistorialController extends Controller
     {
         $usuario = $request->user();
         $historial = Historial::with('cita')->find($id);
+        abort_if(!$historial, 404, 'Historial no encontrado');
 
-        if (!$historial) {
-            return response()->json(['message' => 'Historial no encontrado'], 404);
-        }
-
-        if ($usuario->rol !== 'medico' || $historial->cita->id_medico !== $usuario->id) {
-            return response()->json(['message' => 'No tienes permisos para actualizar este historial'], 403);
-        }
+        abort_unless($usuario->rol === 'MEDICO' && $historial->cita->id_medico === $usuario->id,
+            403, 'No tienes permisos para actualizar este historial');
 
         $historial->update($request->only(['diagnostico', 'receta', 'observaciones']));
 
-        return response()->json($historial, 200);
+        return response()->json($historial);
     }
 
     /**
@@ -111,20 +98,35 @@ class HistorialController extends Controller
      */
     public function destroy($id, Request $request)
     {
-        $usuario = $request->user();
-
-        if ($usuario->rol !== 'admin') {
-            return response()->json(['message' => 'Solo el admin puede eliminar historiales'], 403);
-        }
+        abort_unless($request->user()->rol === 'ADMIN', 403, 'Solo el admin puede eliminar historiales');
 
         $historial = Historial::find($id);
-
-        if (!$historial) {
-            return response()->json(['message' => 'Historial no encontrado'], 404);
-        }
+        abort_if(!$historial, 404, 'Historial no encontrado');
 
         $historial->delete();
 
-        return response()->json(['message' => 'Historial eliminado'], 200);
+        return response()->json(['message' => 'Historial eliminado']);
+    }
+
+    /**
+     * Ver historial por cita (Admin, médico o paciente)
+     */
+    public function porCita($id_cita, Request $request)
+    {
+        $usuario = $request->user();
+        $historial = Historial::where('id_cita', $id_cita)->with('cita.medico', 'cita.paciente')->first();
+        abort_if(!$historial, 404, 'Historial no encontrado');
+
+        $cita = $historial->cita;
+
+        if (
+            $usuario->rol === 'ADMIN' ||
+            ($usuario->rol === 'MEDICO' && $cita->id_medico === $usuario->id) ||
+            ($usuario->rol === 'PACIENTE' && $cita->id_paciente === $usuario->id)
+        ) {
+            return response()->json($historial);
+        }
+
+        abort(403, 'No tienes permisos para ver este historial');
     }
 }
