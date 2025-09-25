@@ -124,7 +124,7 @@ class UsuariosController extends Controller
             'email'    => 'required|email|unique:usuarios',
             'telefono' => 'nullable|string',
             'password' => 'required|string|min:6',
-            'rol'      => 'required|in:PACIENTE',
+            'rol'      => 'required|in:PACIENTE,ADMIN',
         ]);
 
         $usuario = Usuarios::create([
